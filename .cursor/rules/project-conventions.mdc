@@ -1,0 +1,71 @@
+---
+description: Documentation Automation System - 아키텍처, 네이밍, 보안, 디렉토리 규칙
+alwaysApply: true
+---
+
+# Documentation Automation System - 프로젝트 규칙
+
+## 1. 아키텍처 패턴
+
+- **SPA (Single Page Application)**: React 18 + Vite 기반 클라이언트 사이드 렌더링
+- **뷰 기반 상태 전환**: `welcome` → `intake` → `success` 3단계 뷰, `useState`로 전환
+- **컴포넌트 구조**: 함수형 컴포넌트만 사용, props로 데이터 전달
+- **애니메이션**: `motion/react`(AnimatePresence, motion.div) 사용
+- **스타일링**: Tailwind CSS + theme.css CSS 변수, Radix UI 컴포넌트 활용
+- **상태 관리**: 로컬 상태(useState) 우선, 필요 시 컴포넌트 상승
+- **데이터 흐름**: 단방향(top-down), 콜백으로 하위→상위 전달
+
+## 2. 네이밍 컨벤션
+
+| 대상 | 규칙 | 예시 |
+|------|------|------|
+| **컴포넌트 파일** | kebab-case (UI), kebab-case (기능) | `accordion.tsx`, `question-flow-interface.tsx` |
+| **컴포넌트/함수** | PascalCase | `QuestionFlowInterface`, `SuccessView` |
+| **훅** | camelCase, use 접두사 | `useMobile` |
+| **상수/타입** | PascalCase (타입), SCREAMING_SNAKE (상수) | `Question`, `SEVEN_QUESTIONS` |
+| **이벤트 핸들러** | handle 접두사 | `handleComplete`, `handleNext` |
+| **상태 변수** | camelCase, is/has/should 접두사(불린) | `currentIndex`, `isSaving` |
+| **CSS 변수** | kebab-case, -- 접두사 | `--primary-600`, `--neutral-900` |
+
+## 3. 보안 원칙
+
+- **환경 변수**: API 키·시크릿은 절대 하드코딩 금지, `import.meta.env.VITE_*` 사용
+- **사용자 입력**: 외부 API 전송 시 검증·이스케이프, XSS 방지
+- **의존성**: `pnpm audit` 정기 점검, 의심스러운 패키지 사용 금지
+- **민감 데이터**: localStorage/sessionStorage에 비밀번호·토큰 저장 시 암호화 고려
+
+## 4. 절대 금지 사항
+
+- **절대 npm 사용 금지**: 패키지 관리자는 pnpm만 사용
+- **절대 개발 서버 자동 실행 금지**: `pnpm run dev`는 사용자가 직접 실행
+- **절대 Tailwind/React 플러그인 제거 금지**: vite.config.ts의 react(), tailwindcss() 필수
+- **절대 `@/` alias 변경 금지**: `@` = `./src` (vite.config.ts)
+- **절대 index.css import 순서 변경 금지**: fonts → tailwind → theme 순서 유지
+
+## 5. 디렉토리 구조
+
+```
+Documentation Automation System/
+├── src/
+│   ├── main.tsx              # React 진입점
+│   ├── app/
+│   │   ├── App.tsx           # 루트 컴포넌트, 뷰 전환 로직
+│   │   ├── components/       # 기능 컴포넌트
+│   │   │   ├── figma/        # Figma 관련 유틸 컴포넌트
+│   │   │   └── ui/           # Radix 기반 공통 UI 컴포넌트
+│   │   └── lib/              # 상수, 유틸, 타입
+│   └── styles/               # 전역 CSS
+│       ├── index.css         # 진입점 (fonts→tailwind→theme import)
+│       ├── fonts.css
+│       ├── tailwind.css
+│       └── theme.css
+├── guidelines/
+├── index.html
+├── package.json
+├── vite.config.ts
+└── postcss.config.mjs
+```
+
+- **신규 컴포넌트**: 도메인별 `components/` 하위 또는 `ui/` (재사용 UI)
+- **신규 상수·타입**: `lib/constants.ts` 확장 또는 `lib/` 내 별도 파일
+- **신규 스타일**: `styles/` 하위 추가 후 `index.css`에서 import
