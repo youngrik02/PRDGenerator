@@ -5,14 +5,31 @@ import { QuestionFlowInterface } from './components/question-flow-interface';
 import { SuccessView } from './components/success-view';
 import { motion, AnimatePresence } from 'motion/react';
 import { Layout, Sparkles, ArrowRight, Zap, Target, FileText, Users } from 'lucide-react';
+import { saveIntake } from './lib/api';
+import { Toaster, toast } from 'sonner';
 
 export default function App() {
   const [view, setView] = useState<'welcome' | 'intake' | 'success'>('welcome');
   const [responses, setResponses] = useState<Map<string, string>>(new Map());
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleComplete = (finalResponses: Map<string, string>) => {
-    setResponses(finalResponses);
-    setView('success');
+  const handleComplete = async (finalResponses: Map<string, string>) => {
+    setIsSaving(true);
+
+    const result = await saveIntake({
+      responses: finalResponses,
+      projectName: 'Untitled Project',
+      status: 'completed',
+    });
+
+    setIsSaving(false);
+
+    if (result.ok) {
+      setResponses(finalResponses);
+      setView('success');
+    } else {
+      toast.error(result.error.userMessage);
+    }
   };
 
   return (
@@ -122,7 +139,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <QuestionFlowInterface onComplete={handleComplete} />
+            <QuestionFlowInterface onComplete={handleComplete} isSaving={isSaving} />
           </motion.div>
         )}
 
@@ -137,6 +154,7 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+      <Toaster position="top-center" richColors />
     </div>
   );
 }

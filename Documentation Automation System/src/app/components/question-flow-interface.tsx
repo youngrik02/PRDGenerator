@@ -11,13 +11,19 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function QuestionFlowInterface({ onComplete }: { onComplete: (responses: Map<string, string>) => void }) {
+export function QuestionFlowInterface({
+  onComplete,
+  isSaving = false,
+}: {
+  onComplete: (responses: Map<string, string>) => void | Promise<void>;
+  isSaving?: boolean;
+}) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [responses, setResponses] = useState<Map<string, string>>(new Map());
   const [showAISuggestions, setShowAISuggestions] = useState(false);
   const [validationState, setValidationState] = useState<'valid' | 'incomplete' | 'needs-metrics'>('incomplete');
   const [charCount, setCharCount] = useState(0);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   const currentQuestion = SEVEN_QUESTIONS[currentIndex];
@@ -26,16 +32,21 @@ export function QuestionFlowInterface({ onComplete }: { onComplete: (responses: 
   // Auto-save functionality
   useEffect(() => {
     if (currentResponse.length === 0) return;
-    
-    const autoSave = setTimeout(() => {
-      setIsSaving(true);
-      // Simulate API call
-      setTimeout(() => {
-        setIsSaving(false);
+
+    let innerTimerId: ReturnType<typeof setTimeout> | null = null;
+
+    const autoSaveId = setTimeout(() => {
+      setIsDraftSaving(true);
+      innerTimerId = setTimeout(() => {
+        setIsDraftSaving(false);
         setLastSaved(new Date());
       }, 800);
     }, 2000);
-    return () => clearTimeout(autoSave);
+
+    return () => {
+      clearTimeout(autoSaveId);
+      if (innerTimerId !== null) clearTimeout(innerTimerId);
+    };
   }, [currentResponse]);
 
   // Validation logic
@@ -53,12 +64,12 @@ export function QuestionFlowInterface({ onComplete }: { onComplete: (responses: 
     setCharCount(currentResponse.length);
   }, [currentResponse, currentQuestion]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIndex < SEVEN_QUESTIONS.length - 1) {
       setCurrentIndex(currentIndex + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      onComplete(responses);
+      await onComplete(responses);
     }
   };
 
@@ -110,7 +121,7 @@ export function QuestionFlowInterface({ onComplete }: { onComplete: (responses: 
             <div className="flex items-center gap-3">
               <div className="hidden md:flex flex-col items-end mr-2">
                 <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
-                  {isSaving ? 'Saving...' : lastSaved ? `Last saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Draft ready'}
+                  {isDraftSaving ? 'Saving...' : lastSaved ? `Last saved ${lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Draft ready'}
                 </span>
               </div>
               <button className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-100 rounded-lg transition-colors">
@@ -320,15 +331,15 @@ export function QuestionFlowInterface({ onComplete }: { onComplete: (responses: 
             
             <button
               onClick={handleNext}
-              disabled={validationState === 'incomplete'}
+              disabled={validationState === 'incomplete' || isSaving}
               className={cn(
                 "group relative flex items-center gap-2 px-10 py-3 text-sm font-bold rounded-xl transition-all shadow-xl",
-                validationState === 'incomplete' 
-                  ? "bg-neutral-100 text-neutral-400 cursor-not-allowed shadow-none" 
+                validationState === 'incomplete' || isSaving
+                  ? "bg-neutral-100 text-neutral-400 cursor-not-allowed shadow-none"
                   : "bg-primary-600 text-white hover:bg-primary-700 active:scale-95 hover:shadow-primary-600/20"
               )}
             >
-              {currentIndex === SEVEN_QUESTIONS.length - 1 ? 'Generate Document' : 'Next Step'}
+              {isSaving ? 'Saving...' : currentIndex === SEVEN_QUESTIONS.length - 1 ? 'Generate Document' : 'Next Step'}
               <ChevronRight className={cn("w-5 h-5 transition-transform", validationState !== 'incomplete' && "group-hover:translate-x-1")} />
               
               {validationState === 'needs-metrics' && (
